@@ -1,0 +1,14 @@
+{
+  "type": "postgres",
+  "username": "postgres",
+  "password": "developer",
+  "host": "localhost",
+  "database": "graphql_typescript",
+  "port": 5432,
+  "entities": ["src/db/entities/*.entity.ts"],
+  "migrations": ["src/db/migration/*.ts"],
+  "migrationsTableName": "migrations",
+  "cli": {
+    "migrationsDir": "src/db/migration"
+  }
+}
