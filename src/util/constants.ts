@@ -1,0 +1,4 @@
+const CONSTANTS = {
+  FORGOT_PASSWORD_REDIS_KEY: "FORGOT_PASSWORD:",
+};
+export default CONSTANTS;

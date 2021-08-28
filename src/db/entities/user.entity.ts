@@ -1,6 +1,7 @@
 import { GraphQLDateTime } from "graphql-scalars";
 import { Field, Int, ObjectType } from "type-graphql";
-import { BaseEntity, Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { BaseEntity, Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Post } from "./post.entity";
 
 @ObjectType()
 @Entity({ name: "user" })
@@ -25,6 +26,9 @@ export class User extends BaseEntity {
     type: "varchar",
   })
   password!: string;
+
+  @OneToMany(() => Post, (post) => post.author)
+  posts: Post[];
 
   @Field(() => GraphQLDateTime)
   @CreateDateColumn()
