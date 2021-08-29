@@ -53,14 +53,17 @@ export class PostResolver {
     let realLimit = Math.min(50, limit);
     if (realLimit < 0) realLimit = 50;
     let realLimitPlusOne = realLimit + 1;
-    var query = dbConnection.getRepository(Post).createQueryBuilder("getPosts");
-    query = query.orderBy('"createdAt"', "DESC").take(realLimitPlusOne);
+    var query = dbConnection.getRepository(Post).createQueryBuilder("p");
+    query = query
+      .orderBy("p.createdAt", "DESC")
+      .innerJoinAndSelect("p.author", "c", "c.id = p.authorId")
+      .select(["p", "c.id", "c.email", "c.username"])
+      .take(realLimitPlusOne);
     if (cursor)
-      query = query.where('"createdAt" < :cursor', {
+      query = query.where("p.createdAt < :cursor", {
         cursor,
       });
     let posts = await query.getMany();
-
     return { posts: posts.slice(0, realLimit), hasMore: posts.length > realLimit };
   }
 

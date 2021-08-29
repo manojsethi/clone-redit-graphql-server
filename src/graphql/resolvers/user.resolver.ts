@@ -1,13 +1,14 @@
 import argon2 from "argon2";
 import fs from "fs";
 import path from "path";
-import { Arg, Ctx, Field, InputType, Mutation, ObjectType, Query, Resolver } from "type-graphql";
+import { Arg, Ctx, Field, FieldResolver, InputType, Mutation, ObjectType, Query, Resolver, Root } from "type-graphql";
 import { v4 as uuidv4 } from "uuid";
 import { User } from "../../db/entities/user.entity";
 import CONSTANTS from "../../util/constants";
 import EnvironmentConfig from "../../util/env.config";
 import sendEmail from "../../util/sendEmail";
 import { GraphQLContextType } from "../graphql_context_type";
+
 @InputType()
 class UsernamePasswordInput {
   @Field(() => String, { description: "Username of the user. Must be a unique" })
@@ -41,7 +42,8 @@ class UserResponse {
   @Field(() => User, { nullable: true })
   user?: User;
 }
-@Resolver()
+
+@Resolver(User)
 export class UserResolver {
   @Query(() => Boolean)
   async validateForgotPasswordToken(@Arg("token", () => String) token: string, @Ctx() { redis }: GraphQLContextType): Promise<Boolean> {
@@ -49,6 +51,12 @@ export class UserResolver {
     const userId = await redis.get(key);
     if (!userId) return false;
     else return true;
+  }
+
+  @FieldResolver(() => String)
+  email(@Root() user: User, @Ctx() { req }: GraphQLContextType) {
+    if (req.session.userid === user.id) return user.email;
+    else return "";
   }
 
   @Mutation(() => UserResponse)
