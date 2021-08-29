@@ -5,6 +5,7 @@ import { Arg, Ctx, Field, InputType, Mutation, ObjectType, Query, Resolver } fro
 import { v4 as uuidv4 } from "uuid";
 import { User } from "../../db/entities/user.entity";
 import CONSTANTS from "../../util/constants";
+import EnvironmentConfig from "../../util/env.config";
 import sendEmail from "../../util/sendEmail";
 import { GraphQLContextType } from "../graphql_context_type";
 @InputType()
@@ -51,7 +52,11 @@ export class UserResolver {
   }
 
   @Mutation(() => UserResponse)
-  async changePassword(@Arg("token", () => String) token: string, @Arg("newPassword", () => String) newPassword: string, @Ctx() { redis, dbConnection, req }: GraphQLContextType): Promise<UserResponse> {
+  async changePassword(
+    @Arg("token", () => String) token: string,
+    @Arg("newPassword", () => String) newPassword: string,
+    @Ctx() { redis, dbConnection, req }: GraphQLContextType
+  ): Promise<UserResponse> {
     if (newPassword.length <= 2) {
       return {
         errors: [
@@ -116,11 +121,18 @@ export class UserResolver {
     else return await dbConnection.getRepository(User).findOne({ id: req.session.userid });
   }
   @Mutation(() => UserResponse, { description: "Register a new user with a unique username." })
-  async register(@Arg("auth_data", () => RegisterInput) auth_data: RegisterInput, @Ctx() { dbConnection, req }: GraphQLContextType): Promise<UserResponse> {
+  async register(
+    @Arg("auth_data", () => RegisterInput) auth_data: RegisterInput,
+    @Ctx() { dbConnection, req }: GraphQLContextType
+  ): Promise<UserResponse> {
     const hashedPassword = await argon2.hash(auth_data.password);
-    let existingUser = await dbConnection.getRepository(User).findOne({ where: [{ username: auth_data.username.toLowerCase() }, { email: auth_data.email.toLowerCase() }] });
+    let existingUser = await dbConnection
+      .getRepository(User)
+      .findOne({ where: [{ username: auth_data.username.toLowerCase() }, { email: auth_data.email.toLowerCase() }] });
     if (!existingUser) {
-      let user = await dbConnection.getRepository(User).save({ email: auth_data.email.toLowerCase(), username: auth_data.username.toLowerCase(), password: hashedPassword } as User);
+      let user = await dbConnection
+        .getRepository(User)
+        .save({ email: auth_data.email.toLowerCase(), username: auth_data.username.toLowerCase(), password: hashedPassword } as User);
       req.session.userid = user.id;
       return { user };
     } else {
@@ -130,8 +142,13 @@ export class UserResolver {
   }
 
   @Query(() => UserResponse, { description: "Login a user." })
-  async login(@Arg("auth_data", () => UsernamePasswordInput) auth_data: UsernamePasswordInput, @Ctx() { dbConnection, req }: GraphQLContextType): Promise<UserResponse> {
-    let user = await dbConnection.getRepository(User).findOne({ where: [{ username: auth_data.username.toLowerCase() }, { email: auth_data.username.toLowerCase() }] });
+  async login(
+    @Arg("auth_data", () => UsernamePasswordInput) auth_data: UsernamePasswordInput,
+    @Ctx() { dbConnection, req }: GraphQLContextType
+  ): Promise<UserResponse> {
+    let user = await dbConnection
+      .getRepository(User)
+      .findOne({ where: [{ username: auth_data.username.toLowerCase() }, { email: auth_data.username.toLowerCase() }] });
     if (!user) {
       return {
         errors: [{ field: "username", message: "Username doesn't exist." }] as FieldError[],
@@ -153,9 +170,8 @@ export class UserResolver {
   logout(@Ctx() { req, res }: GraphQLContextType): Promise<Boolean> {
     return new Promise((resolve) => {
       req.session.destroy((err) => {
-        res.clearCookie("qid");
+        res.clearCookie(EnvironmentConfig.COOKIE_NAME);
         if (err) {
-          console.log(err);
           resolve(false);
           return;
         }

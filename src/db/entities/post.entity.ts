@@ -1,5 +1,5 @@
 import { GraphQLDateTime } from "graphql-scalars";
-import { Field, Int, ObjectType } from "type-graphql";
+import { Arg, Field, Int, ObjectType } from "type-graphql";
 import { BaseEntity, Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import { User } from "./user.entity";
 
@@ -21,6 +21,20 @@ export class Post extends BaseEntity {
     type: "varchar",
   })
   text: string;
+
+  @Field((type) => String)
+  excerpt(@Arg("length", () => Int, { nullable: true }) length: number): String {
+    if (!length) length = 50;
+    if (this.text.length > length) return this.text.slice(0, length) + "...";
+    else return this.text;
+  }
+
+  @Field((type) => String)
+  textSnippet() {
+    let length = 50;
+    if (this.text.length > length) return this.text.slice(0, length) + "...";
+    else return this.text;
+  }
 
   @Field(() => Number)
   @Column({

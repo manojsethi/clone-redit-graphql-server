@@ -1,12 +1,67 @@
-import { Arg, Ctx, Int, Mutation, Query, Resolver } from "type-graphql";
+import { GraphQLDateTime } from "graphql-scalars";
+import { Arg, Ctx, Field, InputType, Int, Mutation, ObjectType, Query, Resolver, UseMiddleware } from "type-graphql";
 import { Post } from "../../db/entities/post.entity";
+import { isAuth } from "../../middleware/isAuth";
 import { GraphQLContextType } from "../graphql_context_type";
+
+@InputType()
+class PostInput {
+  @Field()
+  title: string;
+
+  @Field()
+  text: string;
+}
+
+@ObjectType()
+class PaginatedPost {
+  @Field(() => [Post])
+  posts: Post[];
+
+  @Field(() => Boolean)
+  hasMore: Boolean;
+}
 
 @Resolver()
 export class PostResolver {
-  @Query(() => [Post], { nullable: false, description: "Get All Posts from the database." })
-  posts(@Ctx() { dbConnection }: GraphQLContextType): Promise<Post[]> {
-    return dbConnection.getRepository(Post).find({});
+  @Query(() => PaginatedPost, { nullable: false, description: "Get All Posts from the database." })
+  async posts_ben(
+    @Arg("limit", () => Int) limit: number,
+    @Arg("cursor", () => String, { nullable: true }) cursor: string,
+    @Ctx() { dbConnection }: GraphQLContextType
+  ): Promise<PaginatedPost> {
+    let realLimit = Math.min(50, limit);
+    if (realLimit < 0) realLimit = 50;
+    let realLimitPlusOne = realLimit + 1;
+    var query = dbConnection.getRepository(Post).createQueryBuilder("getPosts");
+    query = query.orderBy('"createdAt"', "DESC").take(realLimitPlusOne);
+    if (cursor)
+      query = query.where('"createdAt" < :cursor', {
+        cursor: new Date(cursor),
+      });
+    let posts = await query.getMany();
+
+    return { posts: posts.slice(0, realLimit), hasMore: posts.length > realLimit };
+  }
+
+  @Query(() => PaginatedPost, { nullable: false, description: "Get All Posts from the database." })
+  async posts(
+    @Arg("limit", () => Int) limit: number,
+    @Arg("cursor", () => GraphQLDateTime, { nullable: true }) cursor: Date,
+    @Ctx() { dbConnection }: GraphQLContextType
+  ): Promise<PaginatedPost> {
+    let realLimit = Math.min(50, limit);
+    if (realLimit < 0) realLimit = 50;
+    let realLimitPlusOne = realLimit + 1;
+    var query = dbConnection.getRepository(Post).createQueryBuilder("getPosts");
+    query = query.orderBy('"createdAt"', "DESC").take(realLimitPlusOne);
+    if (cursor)
+      query = query.where('"createdAt" < :cursor', {
+        cursor,
+      });
+    let posts = await query.getMany();
+
+    return { posts: posts.slice(0, realLimit), hasMore: posts.length > realLimit };
   }
 
   @Query(() => Post, { nullable: true, description: "Fetches a particular post based on an ID" })
@@ -19,13 +74,17 @@ export class PostResolver {
   }
 
   @Mutation(() => Post, { nullable: true, description: "Creates a new post" })
+  @UseMiddleware(isAuth)
   createPost(
-    @Arg("title", () => String, { nullable: false, description: "Title of new post to be created." })
-    title: string,
-    @Ctx() { dbConnection }: GraphQLContextType
+    @Arg("postData", () => PostInput, { nullable: false, description: "Details of Post." })
+    postData: PostInput,
+    @Ctx() { dbConnection, req }: GraphQLContextType
   ): Promise<Post> {
     let newPost: Post = new Post();
-    newPost.title = title;
+    newPost = {
+      ...postData,
+      authorId: req.session.userid,
+    } as Post;
     return dbConnection.getRepository(Post).save(newPost);
   }
 
