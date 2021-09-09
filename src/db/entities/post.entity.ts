@@ -1,7 +1,8 @@
 import { GraphQLDateTime } from "graphql-scalars";
 import { Arg, Field, Int, ObjectType } from "type-graphql";
-import { BaseEntity, Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { BaseEntity, Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import { User } from "./user.entity";
+import { UserPostVotes } from "./votes.entity";
 
 @ObjectType()
 @Entity({ name: "post" })
@@ -50,6 +51,12 @@ export class Post extends BaseEntity {
   @Field()
   @ManyToOne(() => User, (user) => user.posts)
   author: User;
+
+  @Field(() => Int, { nullable: true })
+  voteStatus: number | null;
+
+  @OneToMany(() => UserPostVotes, (vote) => vote.post)
+  votes: UserPostVotes[];
 
   @Field(() => GraphQLDateTime)
   @CreateDateColumn()
